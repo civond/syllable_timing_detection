@@ -1,0 +1,29 @@
+# Piezo microphone
+
+[Main]
+audio_path = "Data/budgielong.wav"
+filtered_audio_directory = "Audio_Filtered/"
+
+[Filter]
+max_length = 5
+cutoff_low = 350 # Hz
+cutoff_high = 6800
+minimum_attenuation = 25 # dB
+order = 8
+
+[Convolve]
+time_short = 30
+time_long = 360
+time_smooth = 400
+
+[Mask]
+threshold_minimum_time = 500 #ms
+threshold_overlap_min = 20 # ms
+maxZeros = 100
+
+threshold_amplitude_min = 400
+threshold_amplitude_max = 10000
+threshold_mask_val = 50
+threshold_maximum_length = 1
+
+extension_length = 50

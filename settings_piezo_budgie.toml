@@ -1,0 +1,21 @@
+# Piezo microphone
+
+[Main]
+#audio_path = "Data/c50_brian_filtered_song.wav"
+#audio_path = "Data/30Label_filtered_0.flac"
+audio_path = "Data/budgie.wav"
+
+[Convolve]
+time_short = 30
+time_long = 360
+
+[Mask]
+threshold_minimum_time = 40 #ms
+maxZeros = 100
+
+threshold_amplitude_min = 400
+threshold_amplitude_max = 10000
+threshold_mask_val = 50
+threshold_maximum_length = 1
+
+extension_length = 50

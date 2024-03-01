@@ -4,18 +4,28 @@ from scipy.signal import fftconvolve
 import matplotlib.pyplot as plt
 import soundfile as sf
 import os
+import toml
 
+with open('settings_piezo_budgie.toml', 'r') as f:
+    config = toml.load(f);
+    
 plt.close()
 class Detect_syllable:
-    def __init__(self):
-        self.audio_path = "Data\c50_brian_filtered_song.wav"
-        #self.audio_path = "Data\cut.wav"
-        #self.audio_dir_contents = os.listdir(self.audio_dir)
-        self.time_long = 330
-        self.time_short = 20
+    def __init__(self, config):
+        self.audio_path = config["Main"]["audio_path"]
+        self.time_short = int(config['Convolve']['time_short'])
+        self.time_long = int(config['Convolve']['time_long'])
         [self.y, self.fs] = lr.load(self.audio_path, sr=None)
-        self.threshold_minimum_time = 40
-    
+        
+        self.threshold_minimum_time = int(config['Mask']['threshold_minimum_time'])
+        self.maxZeros = int(config['Mask']['maxZeros'])
+        self.threshold_amplitude_min = int(config['Mask']['threshold_amplitude_min'])
+        self.threshold_amplitude_max = int(config['Mask']['threshold_amplitude_max'])
+        
+        self.threshold_mask_val = int(config['Mask']['threshold_mask_val'])
+        self.threshold_maximum_length = int(config['Mask']['threshold_maximum_length'])
+        self.extension_length = int(config['Mask']['extension_length'])
+        
     def convolve_fast(self, y, time):
         fs = self.fs
         y = np.abs(y)
@@ -51,16 +61,17 @@ class Detect_syllable:
         #min = 55
         #max = 65
         
-        min=227
-        max=231.5
+        min=0
+        max=10.5
         
-        maxZeros = int(round(fs*0.04,0))
-        threshold_amplitude = 10_000
-        threshold_maximum_length = 1*fs # seconds
+        maxZeros = int(round((self.maxZeros/1000)*fs))
+        threshold_amplitude_min = self.threshold_amplitude_min
+        threshold_amplitude_max = self.threshold_amplitude_max
+        threshold_maximum_length = self.threshold_maximum_length*fs # seconds
         
         
-        extension = 0.02
-        threshold_mask_val = -400
+        extension = self.extension_length
+        threshold_mask_val = self.threshold_mask_val
         
     
         short_smooth = self.convolve_fast(y, 
@@ -86,7 +97,7 @@ class Detect_syllable:
             #print(f"Start: {start/30000}, Length: {length}, NaNcount: {nan_count}")
             if len(section) > threshold_maximum_length:
                 masked_short[start:start+length] = np.nan
-            if np.max(section) < threshold_amplitude:
+            if np.max(section) < threshold_amplitude_min or np.max(section) > threshold_amplitude_max:
                 #y[start:start + length] = np.nan;
                 masked_short[start:start+length] = np.nan
                 
@@ -128,31 +139,6 @@ class Detect_syllable:
             if len(section) < threshold_minimum_samples:
                 masked_short[start:start + length] = np.nan;"""
                 
-                
-                
-                
-                
-        # This does not        
-        """print(f"Threshold minimum samples : {threshold_minimum_samples}")
-        print(f"maxZeros: {maxZeros}")
-        print(f"Sections before merge: {len(start_indices)}")
-        for start, length in zip(start_indices, chunk_lengths):
-            # Define Section
-            nan_count = np.sum(np.isnan(masked_short[start:start+length]))
-            end = start+length-nan_count;
-            #print(start, length)
-            #print(f"Start: {start/30000}, Length: {length}, NaNcount: {nan_count}")
-            section = y[start:end];
-            
-            if nan_count < maxZeros:
-                masked_short[start:end] = short_smooth[start:end];
-            else:
-                masked_short[start:end-nan_count] = y[start:end-nan_count];
-                
-                
-        start_indices = np.where(~np.isnan(masked_short) & ~np.roll(~np.isnan(masked_short), 1))[0]
-        chunk_lengths = np.diff(np.append(start_indices, len(masked_short)))
-        print(f"Sections after merge: {len(start_indices)}")"""
         
         
         mask = ~np.isnan(masked_short)
@@ -164,7 +150,7 @@ class Detect_syllable:
         
         
         beg_extension_samples = int(extension*fs)
-        end_extension_samples = int((extension+0.01)*fs)
+        end_extension_samples = int((extension+0)*fs) # +0.01 for condenser mic
         write_dir = "Audio_Cut/"
         
         for start, length in zip(start_indices, chunk_lengths):
@@ -174,27 +160,18 @@ class Detect_syllable:
             nan_count = np.sum(np.isnan(masked_short[start:start+length]))
             #end = extension+(start+length-nan_count)
             #start = ((start)/fs)-extension
-            beg = start-beg_extension_samples
-            end = start+length-nan_count+end_extension_samples
+            beg = int(start-(beg_extension_samples/1000))
+            end = int(start+(length-nan_count+end_extension_samples/1000))
             
             print(write_path)
             section = y[beg:end]/32767
             sf.write(write_path, section, fs, format='WAV')
-            #print(f"{write_path}")
             
-            
-            
-            
-            
-            
-            #plt.axvline(x=start, color = 'y')
-            #plt.axvline(x=end, color = 'c')
-            
-        print(mask)
+        """print(mask)
         print(masked_short)
-        print(test_output)
+        print(test_output)"""
         
-        """# plotting
+        # Plotting
         plt.figure(1)
         plt.subplot(3,1,1)
         lr.display.specshow(ft_dB, sr=self.fs, x_axis='time', y_axis='linear');    
@@ -203,8 +180,8 @@ class Detect_syllable:
             # Define Section
             nan_count = np.sum(np.isnan(masked_short[start:start+length]))
             
-            end = extension+(start+length-nan_count)/fs
-            start = ((start)/fs)-extension
+            end = (extension/1000) +(start+length-nan_count)/fs
+            start = ((start)/fs)- (extension/1000)
             plt.axvline(x=start, color = 'y')
             plt.axvline(x=end, color = 'c')
         
@@ -219,15 +196,16 @@ class Detect_syllable:
             # Define Section
             nan_count = np.sum(np.isnan(masked_short[start:start+length]))
             
-            end = extension+(start+length-nan_count)/fs
-            start = ((start)/fs)-extension
+            end = (extension/1000) +(start+length-nan_count)/fs
+            start = ((start)/fs)- (extension/1000)
             plt.axvline(x=start, color = 'y')
             plt.axvline(x=end, color = 'c')
         
         plt.subplot(3,1,3)
         plt.plot(x, y, color='r')
         plt.plot(x,test_output,color='b')
-        plt.axhline(y=threshold_amplitude, color='k',linestyle='--')
+        plt.axhline(y=threshold_amplitude_min, color='k',linestyle='--')
+        plt.axhline(y=threshold_amplitude_max, color='k',linestyle='--')
         plt.xlim(min,max)
         #plt.grid(True)
         
@@ -235,20 +213,20 @@ class Detect_syllable:
             # Define Section
             nan_count = np.sum(np.isnan(masked_short[start:start+length]))
             
-            end = extension+(start+length-nan_count)/fs
-            start = ((start)/fs)-extension
+            end = (extension/1000) +(start+length-nan_count)/fs
+            start = ((start)/fs)- (extension/1000)
             plt.axvline(x=start, color = 'y',alpha=0.5)
             plt.axvline(x=end, color = 'c',alpha=0.5)
             
             #plt.axhline(y= 5000, xmin=start, xmax=end, color='c')
         
-        plt.figure(2)
+        """plt.figure(2)
         plt.title("Cut Signal")
         plt.plot(x,test_output,color='b')
         plt.xlim(min,max)
-        #plt.xlim(55,65)
+        #plt.xlim(55,65)"""
         
         
-        plt.show()"""
+        plt.show()
         
-Detect_syllable().generate_mask()
+Detect_syllable(config).generate_mask()

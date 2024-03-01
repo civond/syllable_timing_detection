@@ -1,0 +1,21 @@
+# Non piezo mic
+
+
+[Main]
+#audio_path = "Data/c50_brian_filtered_song.wav"
+audio_path = "Data/cut.wav"
+
+[Convolve]
+time_short = 20
+time_long = 330
+
+[Mask]
+threshold_minimum_time = 40 #ms
+maxZeros = 40
+
+threshold_amplitude_min = 10000
+threshold_amplitude_max = 30000
+threshold_mask_val = -400
+threshold_maximum_length = 1
+
+extension_length = 20

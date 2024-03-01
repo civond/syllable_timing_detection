@@ -23,6 +23,7 @@ class Filter_signal:
         
         # Load audio
         [self.audio, self.fs] = lr.load(self.audio_path, sr=None)
+        print(f"Filter fs: {self.fs}")
         self.max_duration_samples = int(self.max_duration*3600*self.fs)
     
     # Split the array into managable chunks
@@ -242,7 +243,7 @@ class Generate_mask:
             if np.max(self.y[start:end]) > self.threshold_amplitude_max:
                 overlap2[start:end] = np.nan
         #  
-        plt.figure(2)
+        """plt.figure(2)
         duration = len(overlap)/self.fs
         dt = 1/self.fs
         t = np.arange(0,duration,dt)
@@ -259,11 +260,45 @@ class Generate_mask:
         plt.xlim(170, 230)
     
         plt.show()
-        
+        """
         return overlap2
         
-class Amplitude_threshold:
-    print('test')
+class Get_valid_regions:
+    def __init__(self, cut_signal, filtered_audio_path, config):
+        self.filtered_audio_path = filtered_audio_path
+        self.cut_signal = cut_signal
+        [self.y, self.fs] = lr.load(self.filtered_audio_path, sr=None)
+        self.y = 32767*self.y
+        print(self.fs)
+        
+    def section_fft(self):
+        cut_signal = self.cut_signal
+        start_indices = np.where(~np.isnan(cut_signal) & ~np.roll(~np.isnan(cut_signal), 1))[0];
+        chunk_lengths = np.diff(np.append(start_indices, len(cut_signal)))
+        
+        for start, length in zip(start_indices, chunk_lengths):
+            nan_count = np.sum(np.isnan(cut_signal[start:start+length]))
+            end = start+length-nan_count
+            section = cut_signal[start:end]
+            
+            n_fft = 2048
+            ft = np.abs(lr.stft(section, n_fft=n_fft,  hop_length=256))
+            ft_dB = lr.amplitude_to_db(ft, ref=np.max)
+            
+            plt.figure(1)
+            plt.subplot(2,1,1)
+            [s, rem] = np.divmod(start, self.fs)
+            plt.title(f"Time: {s}.{np.round(rem,2)} s, Sample:{start}, len={len(section)/self.fs}")
+            lr.display.specshow(ft_dB, sr=self.fs, x_axis='time', y_axis='linear')
+            
+            plt.subplot(2,1,2)
+            duration = len(section)/self.fs
+            dt = 1/self.fs
+            t = np.arange(0,duration,dt)
+            plt.plot(t, section, color='b')
+            plt.xlim(0,t[-1])   
+            plt.show()
+
     
     """def fourier_spec(self, cut_audio)
     start_indices = np.where(~np.isnan(overlap) & ~np.roll(~np.isnan(overlap), 1))[0];
@@ -276,10 +311,11 @@ if __name__ == "__main__":
     with open('settings.toml', 'r') as f:
         config = toml.load(f)
         
-    #Filter_signal(config, show_freq_resp= True).filter_array()
+    Filter_signal(config, show_freq_resp= True).filter_array()
     filtered_audio_directory = config["Main"]["filtered_audio_directory"]
     
     for audio_file in os.listdir(filtered_audio_directory):
         filtered_audio_path = os.path.join(filtered_audio_directory, audio_file)
         cut_signal = Generate_mask(filtered_audio_path, config).apply_mask()
+        cut_signal = Get_valid_regions(cut_signal, filtered_audio_path, config).section_fft()
         #cut_signal = Generate_mask(filtered_audio_path, config).filter_overlap()

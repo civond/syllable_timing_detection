@@ -23,7 +23,7 @@ maxZeros = 100
 
 threshold_amplitude_min = 400
 threshold_amplitude_max = 10000
-threshold_mask_val = 50
+threshold_mask_val = 30
 threshold_maximum_length = 1
 
 extension_length = 50

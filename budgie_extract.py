@@ -314,8 +314,8 @@ if __name__ == "__main__":
     Filter_signal(config, show_freq_resp= True).filter_array()
     filtered_audio_directory = config["Main"]["filtered_audio_directory"]
     
-    for audio_file in os.listdir(filtered_audio_directory):
+    """for audio_file in os.listdir(filtered_audio_directory):
         filtered_audio_path = os.path.join(filtered_audio_directory, audio_file)
         cut_signal = Generate_mask(filtered_audio_path, config).apply_mask()
         cut_signal = Get_valid_regions(cut_signal, filtered_audio_path, config).section_fft()
-        #cut_signal = Generate_mask(filtered_audio_path, config).filter_overlap()
+        #cut_signal = Generate_mask(filtered_audio_path, config).filter_overlap()"""

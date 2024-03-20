@@ -1,7 +1,7 @@
 # Piezo microphone
 
 [Main]
-audio_path = "Data/budgielong.wav"
+audio_path = "Data/Ti81_end.flac"
 filtered_audio_directory = "Audio_Filtered/"
 
 [Filter]

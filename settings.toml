@@ -1,7 +1,11 @@
 # Piezo microphone
 
 [Main]
+<<<<<<< HEAD
 audio_path = "Data/Ti81_end.flac"
+=======
+audio_path = "Data/Ti81.wav"
+>>>>>>> 853a7fe9dac62f4139e801e435312cee645138fa
 filtered_audio_directory = "Audio_Filtered/"
 
 [Filter]
@@ -14,11 +18,11 @@ order = 8
 [Convolve]
 time_short = 30
 time_long = 360
-time_smooth = 400
+time_smooth = 30
 
 [Mask]
 threshold_minimum_time = 500 #ms
-threshold_overlap_min = 20 # ms
+threshold_overlap_min = 30 # ms
 maxZeros = 100
 
 threshold_amplitude_min = 400

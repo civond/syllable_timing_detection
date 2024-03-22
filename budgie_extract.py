@@ -114,6 +114,7 @@ class Filter_signal:
             plt.ylim(-self.minimum_attenuation - 30, 10)
             plt.grid(True)
             plt.tight_layout()
+            plt.savefig('Figures/filter.png', )
             plt.show()
 
 class Generate_mask:
@@ -157,7 +158,7 @@ class Generate_mask:
         
         smooth = self.convolve_fast(self.time_smooth)
         copyy = smooth.copy()
-        thresh = 30
+        thresh = 60
         temp_mask = smooth <= thresh  # Create a mask for values under or equal to the threshold
         smooth[temp_mask] = np.nan
         
@@ -170,12 +171,6 @@ class Generate_mask:
         dt = 1/self.fs
         t = np.arange(0,duration,dt)
         
-        """plt.figure(2)
-        plt.plot(t, copyy, color='b')
-        plt.plot(t, smooth, color='r')
-        plt.grid(True)
-        #plt.xlim(0,t[-1])
-        plt.xlim(35,55)"""
 
         #self.show_mask = True
         if self.show_mask == True:
@@ -184,18 +179,30 @@ class Generate_mask:
             t = np.arange(0,duration,dt)
         
             plt.figure(1)
+            plt.subplot(2,1,1)
             plt.plot(t,short_smooth, color='g')
             plt.plot(t,long_smooth, color='b')
             plt.plot(t,temp+long_smooth, color='r')
             plt.grid("True")
             #plt.xlim(0,t[-1])
-            plt.xlim(35,55)
+            plt.xlim(55,58)
             plt.ylabel('Moving Average Magnitude')
             plt.xlabel('Time (s)')
             plt.legend(['Short (50ms)', 'Long (250ms)', 'Overlap'],loc='best')
 
             plt.title('Smoothing Filter Overlaps')
             plt.tight_layout()
+
+            plt.subplot(2,1,2)
+            plt.plot(t, copyy, color='b')
+            plt.plot(t, smooth, color='r')
+            plt.axhline(y = thresh, xmin = 0, xmax = t[-1],
+                            color = 'r', linestyle = '--', linewidth=1) 
+            plt.grid(True)
+            #plt.xlim(0,t[-1])
+            plt.xlim(55,58)
+            plt.show()
+
             plt.show()
     
         return temp, smooth
@@ -250,17 +257,26 @@ class Generate_mask:
         plt.subplot(2,1,1)
         plt.plot(t, self.y, color='b')
         plt.plot(t, overlap, color='r')
-        plt.xlim(170, 230)
+        #plt.xlim(170, 230)
         plt.grid(True)
         
         plt.subplot(2,1,2)
         plt.plot(t, self.y, color='b')
         plt.plot(t, overlap2, color='k')
         plt.grid(True)
-        plt.xlim(170, 230)
+        #plt.xlim(170, 230)
     
-        plt.show()
-        """
+        plt.show()"""
+        #audio_data[np.isnan(audio_data)] = 0
+
+        # write test output
+        clone = overlap2.copy()
+        clone[np.isnan(clone)] = 0
+
+        sf.write("test_output_60.flac", 
+                         clone/32767, 
+                         self.fs, 
+                         format='FLAC')
         return overlap2
         
 class Get_valid_regions:
@@ -286,17 +302,53 @@ class Get_valid_regions:
             ft_dB = lr.amplitude_to_db(ft, ref=np.max)
             
             plt.figure(1)
-            plt.subplot(2,1,1)
+            plt.subplot(4,1,1)
             [s, rem] = np.divmod(start, self.fs)
-            plt.title(f"Time: {s}.{np.round(rem,2)} s, Sample:{start}, len={len(section)/self.fs}")
+            plt.title(f"Time: {round(start/self.fs,2)} s, End:{round((end)/self.fs,2)}, len={len(section)/self.fs}")
             lr.display.specshow(ft_dB, sr=self.fs, x_axis='time', y_axis='linear')
             
-            plt.subplot(2,1,2)
+            plt.subplot(4,1,2)
+            rms = lr.feature.rms(y=section, hop_length=128)
+            zero_crossings = lr.feature.zero_crossing_rate(y=section, hop_length=128)
+
             duration = len(section)/self.fs
             dt = 1/self.fs
             t = np.arange(0,duration,dt)
-            plt.plot(t, section, color='b')
-            plt.xlim(0,t[-1])   
+            t = t[:len(section)]
+            #plt.plot(rms[0], color='r')
+            plt.plot(zero_crossings[0], color='g', linestyle='--')
+            #plt.plot(t, section, color='b')
+            plt.xlim(0,len(zero_crossings[0])-1)
+            plt.ylim(0,0.2)
+            
+            plt.subplot(4,1,3)
+            plt.plot(rms[0], color='r')
+            plt.xlim(0,len(zero_crossings[0])-1)
+            plt.ylim(0, np.max(rms[0]))
+
+
+            fft = np.fft.fft(section)
+            power = np.abs(fft) ** 2
+            power_dB = 10* np.log10(np.abs(power))
+            # Compute the corresponding frequencies
+            freqs = np.fft.fftfreq(len(section), 1/self.fs)
+
+            # Truncate the frequency array to match the length of the FFT output
+            freqs = freqs[:len(fft)]
+
+            # Plot the FFT
+            plt.subplot(4,1,4)
+            autocor = lr.autocorrelate(section)
+
+            plt.plot(autocor)
+            plt.xlim(0,len(autocor)-1)
+
+            """plt.plot(freqs, power_dB, color='b')
+            plt.xlabel('Frequency (Hz)')
+            plt.ylabel('Power')
+            plt.title('FFT of Signal')
+            plt.xlim(0,7000)
+            plt.grid(True)"""
             plt.show()
 
     
@@ -316,6 +368,15 @@ if __name__ == "__main__":
     
     """for audio_file in os.listdir(filtered_audio_directory):
         filtered_audio_path = os.path.join(filtered_audio_directory, audio_file)
+<<<<<<< HEAD
         cut_signal = Generate_mask(filtered_audio_path, config).apply_mask()
         cut_signal = Get_valid_regions(cut_signal, filtered_audio_path, config).section_fft()
         #cut_signal = Generate_mask(filtered_audio_path, config).filter_overlap()"""
+=======
+
+        #cut_signal = Generate_mask(filtered_audio_path, config, show_mask=True).filter_overlap()
+        #cut_signal = Generate_mask(filtered_audio_path, config).apply_mask()
+        #cut_signal = Get_valid_regions(cut_signal, filtered_audio_path, config).section_fft()
+
+        #cut_signal = Generate_mask(filtered_audio_path, config).filter_overlap()
+>>>>>>> 853a7fe9dac62f4139e801e435312cee645138fa
